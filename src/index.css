@@ -1,0 +1,44 @@
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+body {
+  margin: 0;
+  font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", "Roboto", "Helvetica Neue", Arial, sans-serif;
+  -webkit-font-smoothing: antialiased;
+  -moz-osx-font-smoothing: grayscale;
+}
+
+/* Concave top + bottom ribbon curves used by GalleryCarousel's marquee section */
+.ribbon-mask {
+  position: relative;
+  overflow: hidden;
+}
+.ribbon-mask::before,
+.ribbon-mask::after {
+  content: "";
+  position: absolute;
+  left: 50%;
+  transform: translateX(-50%);
+  width: 200%;
+  height: 72px;
+  background: #fdf6ec; /* same as section bg */
+  z-index: 10;
+  pointer-events: none;
+}
+@media (min-width: 768px) {
+  .ribbon-mask::before,
+  .ribbon-mask::after {
+    height: 100px;
+  }
+}
+.ribbon-mask::before {
+  top: -52px;
+  border-bottom-left-radius: 50% 100%;
+  border-bottom-right-radius: 50% 100%;
+}
+.ribbon-mask::after {
+  bottom: -52px;
+  border-top-left-radius: 50% 100%;
+  border-top-right-radius: 50% 100%;
+}
