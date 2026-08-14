@@ -2,6 +2,16 @@ import { FaMapMarkerAlt, FaTree, FaUsers } from "react-icons/fa";
 import { api } from "../../api/client";
 import { useFetch } from "../../hooks/useFetch";
 import { SkeletonGrid, EmptyState, ErrorState } from "../../components/common/DataStates";
+import { useEffect } from "react";
+
+const API_UPLOAD_URL = process.env.REACT_APP_API_UPLOAD_URL || "";
+
+// Helper to prefix image URLs (if not already absolute)
+function getImageUrl(imagePath) {
+  if (!imagePath) return "";
+  if (/^https?:\/\//.test(imagePath)) return imagePath; // already absolute
+  return `${API_UPLOAD_URL.replace(/\/$/, "")}${imagePath.startsWith("/") ? "" : "/"}${imagePath}`;
+}
 
 // Theme color palette
 const COLORS = {
@@ -19,7 +29,13 @@ export default function PlantationDrives() {
     () => api.get("/blogs?page=1&limit=9", { auth: false }),
     []
   );
-  const drives = blogsPage?.items || blogsPage || [];
+  // The backend returns { blogs, pagination }
+  const drives = blogsPage?.blogs || [];
+
+  // Log the fetched data when it changes
+  useEffect(() => {
+    console.log("Fetched blogsPage:", blogsPage);
+  }, [blogsPage]);
 
   return (
     <section className="pt-20" style={{ backgroundColor: COLORS.background }}>
@@ -28,7 +44,7 @@ export default function PlantationDrives() {
         className="relative text-white py-20 text-center px-6"
         style={{
           backgroundColor: COLORS.primary,
-          backgroundImage: `linear-gradient(rgba(231,111,81,0.54),rgba(244,162,97,0.44)), url('/assets/Img1.jpeg')`,
+          backgroundImage: `linear-gradient(rgba(231,111,81,0.54),rgba(244,162,97,0.44)), url('${getImageUrl("/assets/Img1.jpeg")}')`,
           backgroundSize: "cover",
           backgroundPosition: "center",
         }}
@@ -84,24 +100,25 @@ export default function PlantationDrives() {
         {!loading && !error && drives.length > 0 && (
           <div className="grid md:grid-cols-2 lg:grid-cols-3 gap-10">
             {drives.map((drive) => (
-              <a
+              <div
                 key={drive.id || drive._id || drive.slug}
-                href={`/plantation-drives/${drive.slug}`}
                 className="rounded-xl shadow overflow-hidden border block"
                 style={{ backgroundColor: COLORS.surface, borderColor: COLORS.accent }}
               >
-                <img
-                  src={drive.coverImage}
-                  alt={drive.title}
-                  className="h-56 w-full object-cover"
-                  style={{ backgroundColor: COLORS.accent }}
-                  loading="lazy"
-                />
+                {drive.coverImage && (
+                  <img
+                    src={getImageUrl(drive.coverImage)}
+                    alt={drive.title}
+                    className="h-56 w-full object-cover"
+                    style={{ backgroundColor: COLORS.accent }}
+                    loading="lazy"
+                  />
+                )}
                 <div className="p-6">
                   <h3 className="text-xl font-semibold mb-4 font-serif" style={{ color: COLORS.primary }}>
                     {drive.title}
                   </h3>
-                  <div className="space-y-2 text-sm">
+                  <div className="space-y-2 text-sm mb-5">
                     {drive.location && (
                       <div className="flex items-center gap-2" style={{ color: COLORS.textSecondary }}>
                         <FaMapMarkerAlt size={16} style={{ color: COLORS.secondary }} />
@@ -121,8 +138,20 @@ export default function PlantationDrives() {
                       </div>
                     )}
                   </div>
+                  {/* RICH TEXT BLOG CONTENT */}
+                  {drive.content && (
+                    <div
+                      className="prose prose-lg max-w-none font-serif"
+                      style={{
+                        color: COLORS.textPrimary,
+                        backgroundColor: "transparent",
+                        wordBreak: "break-word",
+                      }}
+                      dangerouslySetInnerHTML={{ __html: drive.content }}
+                    />
+                  )}
                 </div>
-              </a>
+              </div>
             ))}
           </div>
         )}

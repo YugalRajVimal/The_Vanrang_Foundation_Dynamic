@@ -1,5 +1,7 @@
 import { useEffect, useRef, useState } from "react";
 import { FaTree } from "react-icons/fa";
+import { api } from "../api/client";
+import { useFetch } from "../hooks/useFetch";
 
 // Theme Colors
 const COLORS = {
@@ -12,8 +14,8 @@ const COLORS = {
   textSecondary: "#6B6B6B",
 };
 
-// Hero images (same as before)
-const heroImages = [
+// fallback images for banners (same as before)
+const fallbackImages = [
   "/assets/Img1.jpeg",
   "/assets/Img2.jpeg",
   "/assets/Img3.jpeg",
@@ -22,7 +24,42 @@ const heroImages = [
   "/assets/Img6.jpeg",
 ];
 
+// Prefix utility for banner images
+const API_UPLOAD_URL = process.env.REACT_APP_API_UPLOAD_URL || "";
+function getBannerImageUrl(imagePath) {
+  if (!imagePath) return "";
+  if (/^https?:\/\//.test(imagePath)) return imagePath; // already absolute
+  return `${API_UPLOAD_URL.replace(/\/$/, "")}${imagePath.startsWith("/") ? "" : "/"}${imagePath}`;
+}
+
 export default function HeroSection() {
+  // fetch banners and fix destructuring confusion
+  const { data } = useFetch(() =>
+    api.get("/banners", { auth: false }).then((res) => res),
+    []
+  );
+
+  // Defensive fallback if API doesn't match expectation
+  let heroImages = fallbackImages;
+  if (data) {
+    // Accepts two possible data shapes:
+    //  1. { banners: [...] } (current actual API result)
+    //  2. Array itself (future possibility)
+    const bannersArr = Array.isArray(data)
+      ? data
+      : Array.isArray(data?.banners)
+      ? data.banners
+      : [];
+    if (bannersArr.length > 0) {
+      heroImages = bannersArr.map((b) => getBannerImageUrl(b.image || b.url));
+    }
+  }
+
+  // --- Console log for checking heroImages and banners ---
+  // Commented out actual logs for production
+  // console.log("HeroSection banners data: ", data);
+  // console.log("HeroSection heroImages: ", heroImages);
+
   const [index, setIndex] = useState(0);
   const [fade, setFade] = useState(true);
   const timeoutRef = useRef();
@@ -42,13 +79,12 @@ export default function HeroSection() {
       clearTimeout(timeoutRef.current);
       clearTimeout(changeImage);
     };
-  }, [index]);
+  }, [index, heroImages.length]);
 
   return (
     <section
       className="relative w-full pt-20 min-h-[75vh] sm:min-h-[80vh] md:min-h-[85vh] flex flex-col justify-center md:justify-end overflow-hidden"
       style={{
-        // Use background color from palette
         background: COLORS.background,
         color: COLORS.textPrimary,
       }}
@@ -68,9 +104,7 @@ export default function HeroSection() {
       <div
         className="absolute inset-0"
         style={{
-          background:
-            // gradient transitions from deep warm-red to accent yellow, with some transparency
-            `linear-gradient(to top, ${COLORS.primary}cc 10%, ${COLORS.secondary}cc 20%, ${COLORS.accent}99 30%)`,
+          background: `linear-gradient(to top, ${COLORS.primary}cc 10%, ${COLORS.secondary}cc 20%, ${COLORS.accent}99 30%)`,
           opacity: 0.47,
         }}
       ></div>

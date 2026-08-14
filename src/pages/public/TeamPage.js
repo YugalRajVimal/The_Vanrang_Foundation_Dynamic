@@ -15,6 +15,14 @@ const COLORS = {
   textSecondary: "#6B6B6B",
 };
 
+// Helper to prefix image URLs
+const API_UPLOAD_URL = process.env.REACT_APP_API_UPLOAD_URL || "";
+function getImageUrl(imagePath) {
+  if (!imagePath) return "";
+  if (/^https?:\/\//.test(imagePath)) return imagePath;
+  return `${API_UPLOAD_URL.replace(/\/$/, "")}${imagePath.startsWith("/") ? "" : "/"}${imagePath}`;
+}
+
 // NOTE — contract gap: /team returns a flat list (photo, name, designation, description,
 // order) with no field distinguishing Founder / Mentor / Inspiration from the general
 // core team, unlike the previous hardcoded page which had three special-cased people.
@@ -36,7 +44,15 @@ function splitFeatured(members) {
 
 export default function TeamPage() {
   const [selected, setSelected] = useState(null);
-  const { data: members, loading, error, retry } = useFetch(() => api.get("/team", { auth: false }), []);
+  const { data, loading, error, retry } = useFetch(() => api.get("/team", { auth: false }), []);
+
+  // The API returns { members: [...] }. Support both [members] and flat array fallback for legacy.
+  const members = (Array.isArray(data?.members) ? data?.members : data) || [];
+
+  // Log the fetched data for debugging
+  if (members !== undefined) {
+    console.log("Fetched /team data:", members);
+  }
 
   return (
     <section className="min-h-screen py-20" style={{ background: COLORS.background }}>
@@ -106,7 +122,7 @@ function TeamContent({ members, selected, setSelected }) {
       </h2>
       <div className="grid sm:grid-cols-2 lg:grid-cols-4 gap-10">
         {core.map((member) => (
-          <MemberCard key={member.id || member._id} member={member} onView={() => setSelected(member)} />
+          <MemberCard key={member._id || member.id} member={member} onView={() => setSelected(member)} />
         ))}
       </div>
 
@@ -125,7 +141,7 @@ function TeamContent({ members, selected, setSelected }) {
               <FaTimes />
             </button>
             <img
-              src={selected.photo || selected.image}
+              src={getImageUrl(selected.photo || selected.image)}
               alt={selected.name}
               className="w-32 aspect-[1/1] rounded-full mx-auto mb-4 object-cover"
               style={{ border: "4px solid " + COLORS.accent + "44" }}
@@ -154,7 +170,7 @@ function MemberCard({ member, large, onView, showBioInline }) {
       style={{ background: COLORS.surface, borderColor: COLORS.primary + "33" }}
     >
       <img
-        src={member.photo || member.image}
+        src={getImageUrl(member.photo || member.image)}
         alt={member.name}
         className="w-32 aspect-[1/1] rounded-full mx-auto mb-4 object-cover border-4"
         style={{ borderColor: COLORS.accent + "66", ...(size ? { width: size, height: size } : {}) }}

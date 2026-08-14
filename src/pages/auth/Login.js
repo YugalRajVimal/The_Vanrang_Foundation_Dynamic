@@ -1,5 +1,5 @@
 import { useState } from "react";
-import { Link, useLocation, useNavigate } from "react-router-dom";
+import { Link, useNavigate } from "react-router-dom";
 import { useAuth } from "../../context/AuthContext";
 import { AuthCard, AuthField, AuthBanner, AuthButton, COLORS, validators } from "../../components/auth/AuthFormBits";
 import { ApiError } from "../../api/client";
@@ -7,8 +7,6 @@ import { ApiError } from "../../api/client";
 export default function Login() {
   const { login } = useAuth();
   const navigate = useNavigate();
-  const location = useLocation();
-  const redirectTo = location.state?.from?.pathname || "/dashboard";
 
   const [form, setForm] = useState({ email: "", password: "" });
   const [fieldErrors, setFieldErrors] = useState({});
@@ -30,8 +28,13 @@ export default function Login() {
     if (!validate()) return;
     setSubmitting(true);
     try {
-      await login(form.email, form.password);
-      navigate(redirectTo, { replace: true });
+      const user = await login(form.email, form.password);
+      // Redirect logic: if admin, redirect to /admin, else /dashboard
+      if (user?.user?.role === "admin") {
+        navigate("/admin", { replace: true });
+      } else {
+        navigate("/dashboard", { replace: true });
+      }
     } catch (err) {
       if (err instanceof ApiError && (err.status === 401 || err.status === 400)) {
         setBanner("Invalid email or password");

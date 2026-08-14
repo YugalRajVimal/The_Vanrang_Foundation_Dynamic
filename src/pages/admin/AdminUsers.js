@@ -1,4 +1,4 @@
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import { api } from "../../api/client";
 import { useFetch } from "../../hooks/useFetch";
 import { SkeletonLines, EmptyState, ErrorState } from "../../components/common/DataStates";
@@ -12,12 +12,38 @@ export default function AdminUsers() {
   const [page, setPage] = useState(1);
   const [selectedId, setSelectedId] = useState(null);
 
-  const { data: usersPage, loading, error, retry } = useFetch(
+  // Fetch users with native pagination and API renaming alignment
+  const { data: usersResponse, loading, error, retry } = useFetch(
     () => api.get(`/admin/users?search=${encodeURIComponent(search)}&page=${page}&limit=${PAGE_SIZE}`),
     [search, page]
   );
-  const users = usersPage?.items || usersPage || [];
-  const hasMore = usersPage?.hasMore ?? users.length === PAGE_SIZE;
+
+  // We'll expect the response to look like:
+  // {
+  //   users: [ ... ],
+  //   pagination: { page: 1, limit: 20, total: 2 }
+  // }
+  const users = Array.isArray(usersResponse?.users)
+    ? usersResponse.users
+    : usersResponse?.items || usersResponse || []; // fallbacks for older responses
+
+  const pagination = usersResponse?.pagination || {
+    page,
+    limit: PAGE_SIZE,
+    total: users.length
+  };
+
+  // Has more pages if there's more records than we've shown
+  const hasMore = pagination
+    ? (pagination.page * pagination.limit) < pagination.total
+    : users.length === PAGE_SIZE;
+
+  // Console.log the full users payload explicitly as specified
+  useEffect(() => {
+    if (!loading && !error && usersResponse) {
+      console.log("Fetched users:", usersResponse);
+    }
+  }, [usersResponse, loading, error]);
 
   const { data: detail, loading: detailLoading } = useFetch(
     () => (selectedId ? api.get(`/admin/users/${selectedId}`) : Promise.resolve(null)),
@@ -58,7 +84,7 @@ export default function AdminUsers() {
             <table className="w-full text-left text-sm">
               <thead>
                 <tr style={{ background: COLORS.background }}>
-                  {["Name", "Email", "Phone", "Joined", ""].map((h) => (
+                  {["Name", "Email", "Phone", "Role", "Member Since", ""].map((h) => (
                     <th key={h} className="p-4 font-semibold" style={{ color: COLORS.primary }}>{h}</th>
                   ))}
                 </tr>
@@ -69,8 +95,13 @@ export default function AdminUsers() {
                     <td className="p-4 font-medium" style={{ color: COLORS.textPrimary }}>{u.name}</td>
                     <td className="p-4" style={{ color: COLORS.textSecondary }}>{u.email}</td>
                     <td className="p-4" style={{ color: COLORS.textSecondary }}>{u.phone}</td>
+                    <td className="p-4" style={{ color: COLORS.textSecondary }}>{u.role || "user"}</td>
                     <td className="p-4" style={{ color: COLORS.textSecondary }}>
-                      {u.joinedAt || u.createdAt ? new Date(u.joinedAt || u.createdAt).toLocaleDateString() : "—"}
+                      {
+                        u.memberSince || u.joinedAt || u.createdAt
+                          ? new Date(u.memberSince || u.joinedAt || u.createdAt).toLocaleDateString()
+                          : "—"
+                      }
                     </td>
                     <td className="p-4">
                       <button onClick={() => setSelectedId(u.id || u._id)} className="font-semibold hover:underline" style={{ color: COLORS.primary }}>
@@ -84,11 +115,21 @@ export default function AdminUsers() {
           </div>
 
           <div className="flex justify-center items-center gap-4 mt-8">
-            <button disabled={page === 1} onClick={() => setPage((p) => Math.max(1, p - 1))} className="px-4 py-2 rounded-lg font-semibold disabled:opacity-40" style={{ background: COLORS.primary, color: COLORS.surface }}>
+            <button
+              disabled={pagination.page === 1}
+              onClick={() => setPage((p) => Math.max(1, p - 1))}
+              className="px-4 py-2 rounded-lg font-semibold disabled:opacity-40"
+              style={{ background: COLORS.primary, color: COLORS.surface }}>
               Previous
             </button>
-            <span style={{ color: COLORS.secondary }}>Page {page}</span>
-            <button disabled={!hasMore} onClick={() => setPage((p) => p + 1)} className="px-4 py-2 rounded-lg font-semibold disabled:opacity-40" style={{ background: COLORS.primary, color: COLORS.surface }}>
+            <span style={{ color: COLORS.secondary }}>
+              Page {pagination.page} {pagination.total ? `of ${Math.ceil(pagination.total / pagination.limit)}` : ""}
+            </span>
+            <button
+              disabled={!hasMore}
+              onClick={() => setPage((p) => p + 1)}
+              className="px-4 py-2 rounded-lg font-semibold disabled:opacity-40"
+              style={{ background: COLORS.primary, color: COLORS.surface }}>
               Next
             </button>
           </div>
