@@ -1,6 +1,6 @@
 import React, { useState, useRef } from "react";
 import { FaPhone, FaEnvelope, FaWhatsapp, FaLeaf, FaBug } from "react-icons/fa";
-import GalleryCarousel from "../../components/GalleryCarousel";
+import GalleryCarousel from "../../components/Home/GalleryCarousel";
 
 const COLORS = {
   primary: "#E76F51",

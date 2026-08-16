@@ -22,6 +22,8 @@ const navItems = [
   { to: "/admin/certificate-requests", label: "Certificate Requests" },
   { to: "/admin/donations", label: "Donations" },
   { to: "/admin/contact-settings", label: "Contact Settings" },
+  { to: "/admin/counters", label: "Counters" },
+  { to: "/admin/banner-card", label: "Banner Card" },
 ];
 
 export default function AdminLayout() {

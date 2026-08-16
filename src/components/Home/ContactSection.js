@@ -12,7 +12,7 @@ import {
   FaYoutube,
   FaInstagram
 } from "react-icons/fa6";
-import { api, ApiError } from "../api/client";
+import { api, ApiError } from "../../api/client";
 
 /*
   ---- THEME SYSTEM ----

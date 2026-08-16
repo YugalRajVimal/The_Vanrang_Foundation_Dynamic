@@ -349,12 +349,12 @@ export default function Footer() {
             ©️ 2026 <span className="text-secondary font-bold">The Vanrang Foundation</span>. All Rights Reserved.
           </span>
           <br />
-          <span className="block">
+          {/* <span className="block">
             <span className="text-secondary font-bold">The Vanrang Foundation</span> is an independent non-profit organization registered under Section 8 of the Companies Act, 2013.
           </span>
           <span className="block">
             This website is for informational and charitable purposes only.
-          </span>
+          </span> */}
           <span className="text-sm text-secondary">
             Tech Partner:{" "}
             <a

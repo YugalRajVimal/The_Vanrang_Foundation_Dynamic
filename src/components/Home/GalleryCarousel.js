@@ -112,8 +112,8 @@
 
 
 import { motion } from "framer-motion";
-import { api } from "../api/client";
-import { useFetch } from "../hooks/useFetch";
+import { api } from "../../api/client";
+import { useFetch } from "../../hooks/useFetch";
 
 // Theme colors are now managed via Tailwind CSS config or global CSS variables for ALL components:
 //   --clr-primary: #E76F51;     // Warm NGO Red

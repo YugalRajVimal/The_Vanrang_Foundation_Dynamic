@@ -38,19 +38,25 @@ async function request(path, { method = "GET", body, isForm = false, auth = true
       headers,
       body: body ? (isForm ? body : JSON.stringify(body)) : undefined,
     });
+    // console.log for request/response
+    console.log(`[API request] ${method} ${BASE_URL}${path}`, { headers, body });
   } catch (networkErr) {
+    console.log('[API error] Network error:', networkErr);
     throw new ApiError("Network error — please check your connection and try again.", { status: 0 });
   }
 
   let json = null;
   try {
     json = await res.json();
-  } catch {
+    console.log(`[API response] ${method} ${BASE_URL}${path} (${res.status})`, json);
+  } catch (parseError) {
     // no body / non-JSON response
+    console.log(`[API response parse error] ${method} ${BASE_URL}${path} (${res.status})`, parseError);
   }
 
   if (!res.ok || !json || json.success === false) {
     const message = (json && json.message) || `Request failed (${res.status})`;
+    console.log('[API error]', { path, method, status: res.status, message, errors: json && json.errors });
     throw new ApiError(message, { status: res.status, errors: (json && json.errors) || [] });
   }
 

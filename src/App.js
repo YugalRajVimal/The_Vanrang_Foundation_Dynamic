@@ -6,12 +6,13 @@ import ProtectedRoute from './components/ProtectedRoute'
 
 import Navbar from './components/NavBar'
 import Footer from './components/Footer'
-import HeroSection from './components/HeroSection'
-import GalleryCarousel from './components/GalleryCarousel'
-import AboutUs from './components/AboutUs'
-import TransparencySection from './components/TransparencySection'
-import VolunteerSection from './components/VolunteerSection'
-import ContactSection from './components/ContactSection'
+import HeroSection from './components/Home/HeroSection'
+import GalleryCarousel from './components/Home/GalleryCarousel'
+import AboutUs from './components/Home/AboutUs'
+import TransparencySection from './components/Home/TransparencySection'
+import VolunteerSection from './components/Home/VolunteerSection'
+import ContactSection from './components/Home/ContactSection'
+
 import PrivacyPolicy from './components/PrivacyPolicy'
 import TermsAndConditions from './components/TermsAndCondition'
 import InternshiForm from './components/InternshiForm'
@@ -48,6 +49,10 @@ import AdminUsers from './pages/admin/AdminUsers'
 import AdminContactSettings from './pages/admin/AdminContactSettings'
 import AdminCertificateRequests from './pages/admin/AdminCertificateRequests'
 import AdminDonations from './pages/admin/AdminDonations'
+import FixedRightCard from './components/FixedRightCard'
+import ScrollToTop from './components/common/ScrollToTop'
+import AdminCounters from './pages/admin/AdminCounters'
+import AdminBannerCard from './pages/admin/AdminBannerCard'
 
 const Home = () => (
   <div>
@@ -64,7 +69,9 @@ const App = () => {
   return (
     <AuthProvider>
       <Router>
+      <ScrollToTop />
         <Navbar />
+        <FixedRightCard />
         <Routes>
           {/* Public site */}
           <Route path="/" element={<Home />} />
@@ -121,6 +128,10 @@ const App = () => {
             <Route path="certificate-requests" element={<AdminCertificateRequests />} />
             <Route path="donations" element={<AdminDonations />} />
             <Route path="contact-settings" element={<AdminContactSettings />} />
+            <Route path="counters" element={<AdminCounters />} />
+            <Route path="banner-card" element={<AdminBannerCard />} />
+     
+     
           </Route>
         </Routes>
         <Footer />
