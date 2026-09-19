@@ -53,6 +53,7 @@ import FixedRightCard from './components/FixedRightCard'
 import ScrollToTop from './components/common/ScrollToTop'
 import AdminCounters from './pages/admin/AdminCounters'
 import AdminBannerCard from './pages/admin/AdminBannerCard'
+import DonationReceipt from './pages/dashboard/DonationReceipt'
 
 const Home = () => (
   <div>
@@ -87,6 +88,8 @@ const App = () => {
           <Route path="/terms-and-conditions" element={<TermsAndConditions />} />
           <Route path="/internship-form" element={<InternshiForm />} />
           <Route path="/privacy-policy" element={<PrivacyPolicy />} />
+
+          <Route path="/donations/:id/receipt" element={<DonationReceipt />} />
 
           {/* Auth */}
           <Route path="/login" element={<Login />} />

@@ -1,4 +1,8 @@
+import { useState } from "react";
 import { FaUniversity, FaQrcode, FaCheckCircle } from "react-icons/fa";
+import { useNavigate } from "react-router-dom";
+import { api } from "../../api/client";
+import { useAuth } from "../../context/AuthContext";
 
 const COLORS = {
   primary: "#F4A261",
@@ -10,7 +14,90 @@ const COLORS = {
   textSecondary: "#6B6B6B",
 };
 
+function loadRazorpayScript() {
+  return new Promise((resolve) => {
+    if (window.Razorpay) return resolve(true);
+    const script = document.createElement("script");
+    script.src = "https://checkout.razorpay.com/v1/checkout.js";
+    script.onload = () => resolve(true);
+    script.onerror = () => resolve(false);
+    document.body.appendChild(script);
+  });
+}
+
 export default function DonationPage() {
+  const { user } = useAuth();
+  const navigate = useNavigate();
+  const [form, setForm] = useState({ amount: "", pan: "", address1: "", address2: "" });
+  const [submitting, setSubmitting] = useState(false);
+  const [error, setError] = useState("");
+
+  const set = (field) => (e) => setForm((f) => ({ ...f, [field]: e.target.value }));
+
+  const handleDonate = async () => {
+    setError("");
+    if (!user) {
+      navigate("/login", { state: { from: "/donate" } });
+      return;
+    }
+    const amt = Number(form.amount);
+    if (!amt || amt <= 0) {
+      setError("Please enter a valid amount.");
+      return;
+    }
+
+    setSubmitting(true);
+    try {
+      const scriptLoaded = await loadRazorpayScript();
+      if (!scriptLoaded) throw new Error("Couldn't load the payment gateway. Check your connection.");
+
+      const order = await api.post("/donations/order", {
+        amount: amt,
+        donorPAN: form.pan || undefined,
+        donorAddress1: form.address1 || undefined,
+        donorAddress2: form.address2 || undefined,
+      });
+
+      const rzp = new window.Razorpay({
+        key: order.keyId,
+        amount: order.amount,
+        currency: order.currency,
+        name: "The Vanrang Foundation",
+        description: "Donation",
+        order_id: order.orderId,
+        prefill: order.prefill,
+        theme: { color: COLORS.accent },
+        handler: async (response) => {
+          try {
+            await api.post("/donations/verify", {
+              razorpay_order_id: response.razorpay_order_id,
+              razorpay_payment_id: response.razorpay_payment_id,
+              razorpay_signature: response.razorpay_signature,
+            });
+            navigate(`/donate/thank-you?status=paid&donationId=${order.donationId}`);
+          } catch (err) {
+            navigate(`/donate/thank-you?status=pending&donationId=${order.donationId}`);
+          }
+        },
+        modal: {
+          ondismiss: () => {
+            navigate(`/donate/thank-you?status=failed&donationId=${order.donationId}`);
+          },
+        },
+      });
+
+      rzp.on("payment.failed", () => {
+        navigate(`/donate/thank-you?status=failed&donationId=${order.donationId}`);
+      });
+
+      rzp.open();
+    } catch (err) {
+      setError(err.message || "Something went wrong starting the payment.");
+    } finally {
+      setSubmitting(false);
+    }
+  };
+
   return (
     <section style={{ background: COLORS.background, padding: "6rem 1.5rem 4rem 1.5rem", minHeight: "100vh" }}>
       <div style={{ maxWidth: 1120, margin: "0 auto" }}>
@@ -24,33 +111,39 @@ export default function DonationPage() {
         </div>
 
         <div className="grid lg:grid-cols-2 gap-12">
-          {/* Bank Details */}
-          <div style={{ background: COLORS.surface, borderRadius: "1rem", boxShadow: "0 1px 10px 2px #0001", padding: "2rem", display: "flex", flexDirection: "column", justifyContent: "center", minHeight: 360 }}>
+          {/* Online donation form (Razorpay) */}
+          <div style={{ background: COLORS.surface, borderRadius: "1rem", boxShadow: "0 1px 10px 2px #0001", padding: "2rem" }}>
             <h2 style={{ fontSize: "1.35rem", fontWeight: 600, marginBottom: "1.2rem", display: "flex", alignItems: "center", gap: "0.5rem", color: COLORS.accent }}>
-              <FaUniversity style={{ color: COLORS.accent }} /> Bank Account Details
+              <FaUniversity style={{ color: COLORS.accent }} /> Donate Online
             </h2>
-            <ul style={{ color: COLORS.textPrimary, listStyle: "none", padding: 0, fontSize: "1.07rem", lineHeight: 1.65 }}>
-              <li style={{ marginBottom: "0.7rem" }}><b>Account Name:</b> The Vanrang Foundation</li>
-              <li style={{ marginBottom: "0.7rem" }}><b>Bank Name:</b> ICICI</li>
-              <li style={{ marginBottom: "0.7rem" }}><b>IFSC Code:</b> ICIC0006736</li>
-              <li style={{ marginBottom: "0.7rem" }}><b>Account No:</b> 673605601281</li>
-              <li><b>UPI ID:</b> 9256741759.ibz@icici</li>
-            </ul>
-            <a
-              href="https://payments-test.cashfree.com/forms/donate-tvf"
-              target="_blank"
-              rel="noopener noreferrer"
-              style={{ display: "inline-block", background: COLORS.accent, color: "#fff", padding: "0.75rem 1.2rem", borderRadius: "0.375rem", textDecoration: "none", fontWeight: 600, boxShadow: "0 1px 8px 0 #0001", marginTop: "1.4rem", marginBottom: "0.8rem", letterSpacing: ".03em", textAlign: "center" }}
-            >
-              Donate Online
-            </a>
-            <div style={{ marginTop: "1rem", textAlign: "center" }}>
-              <h4 style={{ color: COLORS.accent, fontWeight: 500, marginBottom: "0.5rem" }}>PAYMENT QR</h4>
-              <img src="/CASHFREE-QR.png" alt="Payment QR for Online Donation" className="mx-auto" style={{ width: 200, maxWidth: "75%", borderRadius: "0.35rem", border: `1px solid ${COLORS.accent}22` }} />
-            </div>
+
+            {error && (
+              <div style={{ background: "#FBEAE6", color: "#B3401F", padding: "0.6rem 0.9rem", borderRadius: "0.4rem", marginBottom: "1rem", fontSize: "0.9rem" }}>
+                {error}
+              </div>
+            )}
+
+            <label style={{ display: "block", fontSize: "0.85rem", fontWeight: 600, marginBottom: "0.3rem" }}>Amount (₹) *</label>
+            <input type="number" min="1" value={form.amount} onChange={set("amount")} placeholder="e.g. 1000"
+              style={{ width: "100%", padding: "0.6rem 0.8rem", borderRadius: "0.4rem", border: `1px solid ${COLORS.accent}55`, marginBottom: "0.9rem" }} />
+
+            <label style={{ display: "block", fontSize: "0.85rem", fontWeight: 600, marginBottom: "0.3rem" }}>PAN (optional, for receipt)</label>
+            <input type="text" value={form.pan} onChange={set("pan")} maxLength={10} placeholder="ABCDE1234F"
+              style={{ width: "100%", padding: "0.6rem 0.8rem", borderRadius: "0.4rem", border: `1px solid ${COLORS.accent}55`, marginBottom: "0.9rem", textTransform: "uppercase" }} />
+
+            <label style={{ display: "block", fontSize: "0.85rem", fontWeight: 600, marginBottom: "0.3rem" }}>Address (optional, for receipt)</label>
+            <input type="text" value={form.address1} onChange={set("address1")} placeholder="Address line 1"
+              style={{ width: "100%", padding: "0.6rem 0.8rem", borderRadius: "0.4rem", border: `1px solid ${COLORS.accent}55`, marginBottom: "0.6rem" }} />
+            <input type="text" value={form.address2} onChange={set("address2")} placeholder="Address line 2"
+              style={{ width: "100%", padding: "0.6rem 0.8rem", borderRadius: "0.4rem", border: `1px solid ${COLORS.accent}55`, marginBottom: "1.2rem" }} />
+
+            <button onClick={handleDonate} disabled={submitting}
+              style={{ display: "block", width: "100%", background: COLORS.accent, color: "#fff", padding: "0.8rem 1.2rem", borderRadius: "0.375rem", border: 0, fontWeight: 600, cursor: "pointer", opacity: submitting ? 0.7 : 1 }}>
+              {submitting ? "Starting payment…" : "Donate Now"}
+            </button>
           </div>
 
-          {/* Scan to Pay */}
+          {/* Scan to Pay — manual UPI, unaffected by the gateway change */}
           <div style={{ background: COLORS.surface, borderRadius: "1rem", boxShadow: "0 1px 10px 2px #0001", padding: "2rem", display: "flex", flexDirection: "column", justifyContent: "center", alignItems: "center", minHeight: 360 }}>
             <h3 style={{ fontWeight: 600, fontSize: "1.1rem", marginBottom: "1.15rem", display: "flex", alignItems: "center", gap: "0.5rem", color: COLORS.accent }}>
               <FaQrcode style={{ color: COLORS.accent }} /> Scan to Pay
@@ -60,6 +153,12 @@ export default function DonationPage() {
               <span style={{ display: "block", marginBottom: 2 }}>Or use UPI ID:</span>
               <strong>9256741759.ibz@icici</strong>
             </div>
+            <ul style={{ color: COLORS.textPrimary, listStyle: "none", padding: 0, fontSize: "0.95rem", lineHeight: 1.6, marginTop: "1.2rem", textAlign: "left" }}>
+              <li><b>Account Name:</b> The Vanrang Foundation</li>
+              <li><b>Bank Name:</b> ICICI</li>
+              <li><b>IFSC Code:</b> ICIC0006736</li>
+              <li><b>Account No:</b> 673605601281</li>
+            </ul>
           </div>
         </div>
 

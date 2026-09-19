@@ -3,6 +3,7 @@ import { api, ApiError, BASE_URL, getToken } from "../../api/client";
 import { useFetch } from "../../hooks/useFetch";
 import { SkeletonLines, EmptyState, ErrorState } from "../../components/common/DataStates";
 import { DASHBOARD_COLORS as COLORS } from "./DashboardLayout";
+import { useNavigate } from "react-router-dom";
 
 // Defensive utility to always get a flat array of donations
 function getArrayFromApiResponse(data) {
@@ -23,6 +24,22 @@ export default function DonationHistory() {
   const donations = getArrayFromApiResponse(donationsRaw);
   const [downloadingId, setDownloadingId] = useState(null);
   const [downloadError, setDownloadError] = useState("");
+  const navigate = useNavigate();
+  const [checkingId, setCheckingId] = useState(null);
+
+
+  const handleCheckStatus = async (id) => {
+    setCheckingId(id);
+    try {
+      await api.get(`/donations/me/${id}/status`);
+      retry(); // re-fetch the list so the row reflects the latest status
+    } catch (err) {
+      setDownloadError("Couldn't check payment status. Please try again.");
+    } finally {
+      setCheckingId(null);
+    }
+  };
+
 
   // Log fetched donation data for debugging
   useEffect(() => {
@@ -116,20 +133,22 @@ export default function DonationHistory() {
                     {d.status}
                   </span>
                 </td>
-                <td className="p-4">
-                  {d.status === "paid" ? (
-                    <button
-                      onClick={() => handleReceipt(d.id || d._id)}
-                      disabled={downloadingId === (d.id || d._id)}
-                      className="text-sm font-semibold hover:underline disabled:opacity-50"
-                      style={{ color: COLORS.primary }}
-                    >
-                      {downloadingId === (d.id || d._id) ? "Preparing…" : "Download"}
-                    </button>
-                  ) : (
-                    <span style={{ color: COLORS.textSecondary }}>—</span>
-                  )}
-                </td>
+
+<td className="p-4">
+  {d.status === "paid" && (
+    <button onClick={() => navigate(`/donations/${d.id || d._id}/receipt`)}
+      className="text-sm font-semibold hover:underline" style={{ color: COLORS.primary }}>
+      View / Download
+    </button>
+  )}
+  {d.status === "pending" && (
+    <button onClick={() => handleCheckStatus(d.id || d._id)} disabled={checkingId === (d.id || d._id)}
+      className="text-sm font-semibold hover:underline disabled:opacity-50" style={{ color: COLORS.textSecondary }}>
+      {checkingId === (d.id || d._id) ? "Checking…" : "Check status"}
+    </button>
+  )}
+  {d.status === "failed" && <span style={{ color: COLORS.textSecondary }}>—</span>}
+</td>
               </tr>
             );
           })}
